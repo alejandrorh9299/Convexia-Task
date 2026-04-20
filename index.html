@@ -508,7 +508,7 @@ function renderStats(){
 function cardHTML(c){
   const od=isOD(c);
   const prioStyle=c.prioridad?`<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:99px;${PRIO_CLS[c.prioridad]||''}">${PRIO_LBL[c.prioridad]||''}</span>`:'';
-  return`<div class="card" draggable="true" data-id="${c.id}" ondragstart="dragStart(event)" ondragend="dragEnd(event)" onclick="openDetail(${c.id})">
+  return`<div class="card" draggable="true" data-id="${c.id}" ondragstart="dragStart(event)" ondragend="dragEnd(event)" onclick="if(!wasDragged)openDetail(${c.id})" style="cursor:pointer">
     <div class="card-title">${c.title}</div>
     ${c.client?`<div class="card-client">${c.client}</div>`:''}
     <div class="card-footer">
@@ -579,8 +579,9 @@ function renderPipeline(){
     </div>`;
   }).join('');
 }
-function dragStart(e){dragId=parseInt(e.currentTarget.dataset.id);e.currentTarget.classList.add('dragging');}
-function dragEnd(e){e.currentTarget.classList.remove('dragging');}
+let wasDragged=false;
+function dragStart(e){dragId=parseInt(e.currentTarget.dataset.id);e.currentTarget.classList.add('dragging');wasDragged=false;}
+function dragEnd(e){e.currentTarget.classList.remove('dragging');wasDragged=true;setTimeout(()=>wasDragged=false,100);}
 function drop(e,status){
   e.preventDefault();
   document.querySelectorAll('.drop-zone').forEach(z=>z.classList.remove('drag-over'));
