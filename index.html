@@ -158,6 +158,19 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
 .btn-cancel { font-family:'Montserrat',sans-serif; font-size:11px; font-weight:600; padding:7px 14px; border-radius:var(--radius); border:1px solid var(--border2); background:transparent; color:var(--text2); cursor:pointer; text-transform:uppercase; letter-spacing:.4px; }
 .btn-save { font-family:'Montserrat',sans-serif; font-size:11px; font-weight:700; padding:7px 16px; border-radius:var(--radius); border:none; background:var(--navy); color:#fff; cursor:pointer; text-transform:uppercase; letter-spacing:.5px; transition:background .15s; }
 .btn-save:hover { background: var(--blue); }
+/* TASK DETAIL MODAL */
+.detail-overlay { display:none; position:fixed; inset:0; background:rgba(13,31,53,0.55); z-index:300; align-items:center; justify-content:center; }
+.detail-overlay.open { display:flex; }
+.detail-modal { background:var(--surface); border-radius:var(--radius-lg); border:1px solid var(--border2); width:520px; max-width:96vw; max-height:88vh; overflow-y:auto; box-shadow:0 24px 64px rgba(26,53,90,0.22); border-top:3px solid var(--blue); }
+.detail-header { padding:1.25rem 1.5rem 1rem; border-bottom:1px solid var(--border); }
+.detail-title { font-size:15px; font-weight:700; color:var(--navy); line-height:1.4; margin-bottom:8px; }
+.detail-body { padding:1.25rem 1.5rem; }
+.detail-row { display:flex; gap:8px; margin-bottom:10px; align-items:flex-start; }
+.detail-lbl { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.7px; min-width:90px; padding-top:2px; }
+.detail-val { font-size:12px; color:var(--text); font-weight:500; line-height:1.5; flex:1; }
+.detail-desc { background:var(--bg); border-radius:var(--radius); padding:10px 12px; font-size:12px; color:var(--text2); line-height:1.6; border-left:2px solid var(--blue-mid); margin-bottom:1rem; }
+.detail-close { font-family:'Montserrat',sans-serif; font-size:11px; font-weight:700; padding:7px 18px; border-radius:var(--radius); border:none; background:var(--navy); color:#fff; cursor:pointer; text-transform:uppercase; letter-spacing:.5px; }
+.detail-close:hover { background:var(--blue); }
 </style>
 </head>
 <body>
@@ -267,6 +280,11 @@ body { font-family: 'Montserrat', sans-serif; background: var(--bg); color: var(
   </div>
 </div>
 
+
+<!-- TASK DETAIL MODAL -->
+<div class="detail-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetail()">
+  <div class="detail-modal" id="detailModal"></div>
+</div>
 
 <div class="overlay" id="overlay">
   <div class="modal">
@@ -490,7 +508,7 @@ function renderStats(){
 function cardHTML(c){
   const od=isOD(c);
   const prioStyle=c.prioridad?`<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:99px;${PRIO_CLS[c.prioridad]||''}">${PRIO_LBL[c.prioridad]||''}</span>`:'';
-  return`<div class="card" draggable="true" data-id="${c.id}" ondragstart="dragStart(event)" ondragend="dragEnd(event)">
+  return`<div class="card" draggable="true" data-id="${c.id}" ondragstart="dragStart(event)" ondragend="dragEnd(event)" onclick="openDetail(${c.id})">
     <div class="card-title">${c.title}</div>
     ${c.client?`<div class="card-client">${c.client}</div>`:''}
     <div class="card-footer">
@@ -506,6 +524,43 @@ function cardHTML(c){
     <button class="btn-del-card" onclick="deleteTask(${c.id},event)">✕ eliminar</button>
   </div>`;
 }
+function openDetail(id){
+  const c=tasks.find(t=>t.id===id); if(!c)return;
+  const od=isOD(c);
+  const colLabel=COLS.find(col=>col.id===c.status);
+  document.getElementById('detailModal').innerHTML=`
+    <div class="detail-header">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px">
+        <div class="detail-title">${c.title}</div>
+        <button onclick="closeDetail()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3);padding:0;line-height:1;flex-shrink:0">✕</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <span class="tag tag-${c.tag||'otro'}">${TLBL[c.tag]||c.tag||'Otro'}</span>
+        ${c.prioridad?`<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;${PRIO_CLS[c.prioridad]||''}">${PRIO_LBL[c.prioridad]||''}</span>`:''}
+        <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--surface2);color:var(--text2)">${colLabel?colLabel.label:c.status}</span>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div class="detail-row"><span class="detail-lbl">Cliente</span><span class="detail-val">${c.client||'—'}</span></div>
+      <div class="detail-row"><span class="detail-lbl">Asignado a</span>
+        <span class="detail-val" style="display:flex;align-items:center;gap:6px">
+          <div class="avatar ${AV[c.employee]||'av-a'}" style="width:22px;height:22px;font-size:8px">${INI[c.employee]||'??'}</div>${c.employee||'—'}
+        </span>
+      </div>
+      <div class="detail-row"><span class="detail-lbl">Deadline</span>
+        <span class="detail-val ${od?'':''}">
+          <span style="${od?'color:#c0392b;font-weight:700':''}">${c.due?fmtS(c.due):'—'}${od?' · Vencida':''}</span>
+        </span>
+      </div>
+      ${c.desc?`<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Descripción</div><div class="detail-desc">${c.desc}</div></div>`:''}
+      ${c.archivo?`<div style="margin-bottom:12px"><div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Archivo adjunto</div>${c.archivoTipo&&c.archivoTipo.startsWith('image/')?`<img src="${c.archivo}" style="max-width:100%;max-height:200px;border-radius:var(--radius);border:1px solid var(--border2);display:block">`:`<a href="${c.archivo}" download="${c.archivoNombre}" style="font-size:12px;color:var(--blue);font-weight:600;display:inline-flex;align-items:center;gap:5px;text-decoration:none">📎 ${c.archivoNombre}</a>`}</div>`:''}
+      <div style="text-align:right;padding-top:4px">
+        <button class="detail-close" onclick="closeDetail()">Cerrar</button>
+      </div>
+    </div>`;
+  document.getElementById('detailOverlay').classList.add('open');
+}
+function closeDetail(){document.getElementById('detailOverlay').classList.remove('open');}
 function renderPipeline(){
   renderStats();
   const list=filteredTasks();
@@ -557,7 +612,7 @@ function saveManualTask(){
   saveT();closeModal();renderPipeline();
 }
 document.getElementById('overlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeDetail();}});
 function exportCSV(){
   if(!delivered.length){alert('No hay entregas para exportar.');return;}
   const headers=['Título','Cliente','Asignado a','Área','Prioridad','Deadline','Fecha entrega'];
